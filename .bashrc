@@ -62,11 +62,18 @@ if [ -n "$force_color_prompt" ]; then
     fi
 fi
 
+export VIRTUAL_ENV_DISABLE_PROMPT=1
+
 # Custom function to build the prompt
 build_prompt() {
    local venv=""
    if [ -n "$VIRTUAL_ENV" ]; then
-      venv="($(basename "$VIRTUAL_ENV")) "
+      local name=""
+      local cfg="$VIRTUAL_ENV/pyvenv.cfg"
+      if [ -f "$cfg" ]; then
+         name=$(sed -n 's/^prompt *= *//p' "$cfg")
+      fi
+      venv="(${name:-$(basename "$(dirname "$VIRTUAL_ENV")")}) "
    fi
    PS1="${venv}${debian_chroot:+($debian_chroot)}\[\033[00;32m\]\D{%Y-%m-%d} \[\033[01;32m\]\t \[\033[01;36m\]\u@\h\[\033[00m\]: \w\[\033[00m\]\n\$ "
 
@@ -368,9 +375,9 @@ clipf() {
     fi
 }
 
-alias venv_montera="source $HOME/Documents/projects/Olympus/montera/scripts/env_montera/bin/activate"
+alias venv_montera="source $HOME/Documents/projects/Olympus/montera/scripts/.venv/bin/activate"
 alias venv_gd="source $HOME/Documents/projects/gnss-diff/env_diff/bin/activate"
-alias venv_pi="source $HOME/Documents/projects/gnss-programmatic/env_prog/bin/activate"
+alias venv_pi="source $HOME/Documents/projects/gnss-programmatic/.venv/bin/activate"
 alias venv_drive="source $HOME/Documents/projects/judo-radio-utils/drivetest/env_drive/bin/activate"
 alias venv_jenkins="source $HOME/Downloads/_Judo_Firmware/env_jenkins/bin/activate"
 
