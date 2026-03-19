@@ -119,6 +119,12 @@ if [ -x /usr/bin/dircolors ]; then
     alias egrep='egrep --color=auto'
 fi
 
+# batcat is good at highlighting code, yaml, markdown, etc. And has a
+# built-in pager.
+if command -v batcat &>/dev/null; then
+   alias b='batcat --plain'
+fi
+
 # colored GCC warnings and errors
 #export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
