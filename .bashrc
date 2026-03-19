@@ -160,10 +160,10 @@ addpath "$gpath"
 
 # some more ls aliases
 alias l='ls -CF'
-alias ll='ls -alFh --time-style="+%Y-%m-%d"'
+alias ll='ls -alFh --time-style="+%Y-%m-%d %H:%M:%S"'
 alias la='ls -A'
-alias lt='ls -lrth --time-style="+%Y-%m-%d"'
-alias ltd='ls -lrthd --time-style="+%Y-%m-%d"'
+alias lt='ls -lrth --time-style="+%Y-%m-%d %H:%M:%S"'
+alias ltd='ls -lrthd --time-style="+%Y-%m-%d %H:%M:%S"'
 # List by groups:
 #  - group directories first
 #  - LOC_COLLATE=C forces case to be important, which groups .xxxx and _xxxx
