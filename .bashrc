@@ -159,6 +159,7 @@ gpath=$(go env GOPATH)/bin
 addpath "$gpath"
 addpath "$HOME/.npm-global/bin"
 addpath "$HOME/.cargo/bin"
+addpath "$HOME/.local/bin"
 
 # some more ls aliases
 alias l='ls -CF'
