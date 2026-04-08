@@ -396,6 +396,11 @@ export PICO_SDK_PATH=/home/russ/Documents/projects/pico-sdk/
 alias xcfile="xsel --clipboard --output > "
 alias xccb="cat your_file.txt | xclip -selection clipboard"
 
+DOCKER_COMPOSE_FILE="/home/dockeruser/docker/powerwall-proxy/docker-compose.yml"
+if [ -f "$DOCKER_COMPOSE_FILE" ]; then
+  alias vidcomp="sudo vim ${DOCKER_COMPOSE_FILE}"
+fi
+
 
 # Judo Yocto Stuff
 #
