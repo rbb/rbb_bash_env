@@ -329,28 +329,55 @@ fclip() {
 # Usage: fclip <file_name>
 # Action: Reads the content of the specified file and puts it into the system clipboard.
 ######################################################
+    # 1. Validation
     if [ -z "$1" ]; then
         echo "Error: No file specified."
         echo "Usage: fclip <file_name>"
         return 1
     elif [ ! -f "$1" ]; then
-        echo "Error: File '$1' not found or is not a regular file."
+        echo "Error: File '$1' not found."
         return 1
     fi
 
-    # Check if xclip is installed
-    if ! command -v xclip &> /dev/null
-    then
-        echo "Error: xclip is not installed. Please install it (e.g., sudo apt install xclip)."
-        return 1
+    local FILE="$1"
+    local COPIED=false
+
+    # 2. Attempt Graphical Clipboard Tools
+    if [ -n "$WAYLAND_DISPLAY" ] && command -v wl-copy > /dev/null; then
+        wl-copy < "$FILE"
+        echo "Copied to Wayland clipboard."
+        COPIED=true
+    elif [ -n "$DISPLAY" ] && command -v xclip > /dev/null; then
+        xclip -selection clipboard < "$FILE"
+        echo "Copied to X11 clipboard."
+        COPIED=true
+    elif command -v pbcopy > /dev/null; then
+        pbcopy < "$FILE"
+        echo "Copied to macOS clipboard."
+        COPIED=true
     fi
 
-    # Use 'cat' to output the file and pipe to 'xclip'
-    cat "$1" | xclip -selection clipboard
+    # 3. Always send OSC 52 as well (Fallback/SSH support)
+    # This works in Alacritty/iTerm2 even over SSH without X11 forwarding
+    if command -v base64 > /dev/null; then
+        # We limit the size because terminals have escape sequence limits (~100KB)
+        local size=$(wc -c < "$FILE")
+        if [ "$size" -lt 100000 ]; then
+            local b64_data=$(base64 < "$FILE" | tr -d '\n\r')
+            printf "\e]52;c;%s\a" "$b64_data"
+            echo "Sent to terminal via OSC 52."
+            COPIED=true
+        else
+            echo "File too large for OSC 52 (limit ~100KB)."
+        fi
+    fi
 
-    # Optional confirmation message
-    echo "Content of '$1' copied to clipboard."
+    if [ "$COPIED" = false ]; then
+        echo "Error: No clipboard tool found (xclip, wl-copy, pbcopy, or base64)."
+        return 1
+    fi
 }
+
 
 ######################################################
 clipf() {
@@ -365,22 +392,56 @@ clipf() {
         return 1
     fi
 
-    # Check if xclip is installed
-    if ! command -v xclip &> /dev/null
-    then
-        echo "Error: xclip is not installed. Please install it (e.g., sudo apt install xclip)."
-        return 1
-    fi
-
-    # Check for the optional 'append' argument
-    if [ "$2" == "append" ]; then
-        # Use 'xclip' to output clipboard contents and append (>>) to file
-        xclip -selection clipboard -out >> "$1"
-        echo "Clipboard content appended to '$1'."
+    if [ -n "$WAYLAND_DISPLAY" ] && command -v wl-paste > /dev/null; then
+       if [ "$2" = "append" ]; then
+          wl-paste >> "$1"
+          echo "Wayland clipboard content appended to '$1'."
+       else
+          wl-paste > "$1"
+          echo "Wayland clipboard content copied to '$1'."
+       fi
+    elif [ -n "$DISPLAY" ] && command -v xclip > /dev/null; then
+       echo "using xclip"
+       if [ "$2" = "append" ]; then
+           xclip -selection clipboard -out >> "$1"
+           echo "X clipboard content appended to '$1'."
+       else
+           xclip -selection clipboard -o > "$1"
+           echo "X clipboard content written to '$1' (overwritten)."
+       fi
+    elif command -v pbpaste > /dev/null; then
+       # For macOS (if you ever port this)
+       if [ "$2" = "append" ]; then
+           pbpaste >> "$1"
+           echo "mac clipboard content appended to '$1'."
+       else
+           pbpaste > "$1"
+           echo "mac clipboard content copied to '$1'."
+       fi 
     else
-        # Use 'xclip' to output clipboard contents and overwrite (>) the file
-        xclip -selection clipboard -out > "$1"
-        echo "Clipboard content written to '$1' (overwritten)."
+       echo "No display detected. Attempting OSC 52 clipboard pull..."
+       # Send the escape sequence to request the clipboard (System Clipboard = 'c')
+       # We use '?' to ask the terminal to send back the content
+       printf "\e]52;c;?\a"
+
+       # Read the response from the terminal (Base64 encoded)
+       # This part is tricky because the terminal responds on stdin
+       # We read until the 'Terminator' (the bell \a or \e\\)
+       IFS= read -d $'\a' -r -s -t 2 response
+
+       # Extract the Base64 part and decode it
+       # The response looks like: ^[]52;c;<base64_data>
+       if [[ "$response" =~ .*\;(.+)$ ]]; then
+           if [ "$2" = "append" ]; then
+              echo "Clipboard content appended via OSC 52 to $1"
+              echo "${BASH_REMATCH[1]}" | base64 --decode >> "$1"
+           else
+              echo "Clipboard content copied via OSC 52 to $1"
+              echo "${BASH_REMATCH[1]}" | base64 --decode > "$1"
+           fi
+       else
+          echo "Error: OSC 52 read failed. Ensure your terminal supports/permits clipboard reading."
+       fi
     fi
 }
 
