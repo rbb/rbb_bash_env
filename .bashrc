@@ -125,6 +125,41 @@ if command -v batcat &>/dev/null; then
    alias b='batcat --plain'
 fi
 
+if command -v bwrap &>/dev/null; then
+   bwrap_agent() {
+    local CWD=$(pwd)
+    echo "🛡️  Starting $1 in Sandbox: $CWD"
+
+    # Define common system paths to allow (read-only)
+    # Define current project as read-write
+    bwrap \
+        --ro-bind /usr /usr \
+        --ro-bind /bin /bin \
+        --ro-bind /lib /lib \
+        --ro-bind /lib64 /lib64 \
+        --ro-bind /etc/resolv.conf /etc/resolv.conf \
+        --ro-bind /etc/ssl /etc/ssl \
+        --ro-bind /etc/hosts /etc/hosts \
+        --proc /proc \
+        --dev /dev \
+        --tmpfs /tmp \
+        --tmpfs "$HOME" \
+        --bind "$CWD" "$CWD" \
+        --chdir "$CWD" \
+        --unshare-all \
+        --share-net \
+        --die-with-parent \
+        "$@"
+   }
+   if command -v opencode &>/dev/null; then
+      alias bwopencode='bwrap_agent opencode'
+   fi
+   if command -v agent &>/dev/null; then
+      alias bwagent='bwrap_agent agent'
+   fi
+fi
+
+
 # colored GCC warnings and errors
 #export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
@@ -175,9 +210,13 @@ alias ltd='ls -lrthd --time-style="+%Y-%m-%d %H:%M:%S"'
 #  - force hidden files, except .. and . to be displayed with -A
 alias lg='LC_COLLATE=C ls -A --group-directories-first'
 alias hgrep="history|grep"
+alias hpage="history|tail -n 60"
 alias agrep="alias|grep"
 alias ha="history -a"
 alias resh='source ~/.bashrc'
+if command -v vim &>/dev/null; then 
+   export EDITOR=vim
+fi
 
 if command -v git &>/dev/null; then 
    #alias gitlog='git log --reverse --pretty'
@@ -207,6 +246,9 @@ function gitsha () {
    fi
 }
 
+if command -v mosquitto_sub &>/dev/null; then 
+   alias mqtt_dev="mosquitto_sub -h testpi -t 'MP1010/devices/#' -W 1"
+fi
 
 # Add an "alert" alias for long running commands.  Use like so:
 #   sleep 10; alert
@@ -450,6 +492,7 @@ alias venv_gd="source $HOME/Documents/projects/gnss-diff/env_diff/bin/activate"
 alias venv_pi="source $HOME/Documents/projects/gnss-programmatic/.venv/bin/activate"
 alias venv_drive="source $HOME/Documents/projects/judo-radio-utils/drivetest/env_drive/bin/activate"
 alias venv_jenkins="source $HOME/Downloads/_Judo_Firmware/env_jenkins/bin/activate"
+alias va=". .venv/bin/activate"
 
 alias hdfview="flatpak run org.hdfgroup.HDFView"
 
