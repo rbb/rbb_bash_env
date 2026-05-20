@@ -197,9 +197,11 @@ addpath "$HOME/titan/bin"
 addpath "$HOME/opt/nvim-linux64/bin"
 addpath "$HOME/opt/openEMS/bin/"
 addpath "$HOME/opt/octave/bin/"
-addpath "/usr/local/go/bin"
-gpath=$(go env GOPATH)/bin
-addpath "$gpath"
+if [ -d  "/usr/local/go/bin" ]; then
+   addpath "/usr/local/go/bin"
+   gpath=$(go env GOPATH)/bin
+   addpath "$gpath"
+fi
 addpath "$HOME/.npm-global/bin"
 addpath "$HOME/.cargo/bin"
 addpath "$HOME/.local/bin"
