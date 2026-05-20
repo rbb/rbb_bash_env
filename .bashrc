@@ -3,10 +3,9 @@
 # for examples
 
 # If not running interactively, don't do anything
-case $- in
-    *i*) ;;
-      *) return;;
-esac
+[ -z "$PS1" ] && return
+
+# Some history notes: https://sanctum.geek.nz/arabesque/better-bash-history/
 
 # don't put duplicate lines or lines starting with space in the history.
 # See bash(1) for more options
@@ -16,10 +15,9 @@ HISTCONTROL=ignoreboth
 shopt -s histappend
 
 # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
-HISTSIZE=1000
-HISTFILESIZE=2000
-
-# Ignore the following commands
+export HISTSIZE=5000
+export HISTFILESIZE=10000
+export HISTTIMEFORMAT='%F %T '
 export HISTIGNORE='bg:fg'
 
 # Record history right away, rather than after exiting terminal
@@ -28,10 +26,6 @@ PROMPT_COMMAND='history -a'
 # check the window size after each command and, if necessary,
 # update the values of LINES and COLUMNS.
 shopt -s checkwinsize
-
-# If set, the pattern "**" used in a pathname expansion context will
-# match all files and zero or more directories and subdirectories.
-#shopt -s globstar
 
 # make less more friendly for non-text input files, see lesspipe(1)
 [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
@@ -50,7 +44,6 @@ esac
 # off by default to not distract the user: the focus in a terminal window
 # should be on the output of commands, not on the prompt
 #force_color_prompt=yes
-
 if [ -n "$force_color_prompt" ]; then
     if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
 	# We have color support; assume it's compliant with Ecma-48
@@ -116,7 +109,20 @@ if [ -x /usr/bin/dircolors ]; then
 
     alias grep='grep --color=auto'
     alias fgrep='fgrep --color=auto'
-    alias egrep='egrep --color=auto'
+    egbin=`command -v egrep` &>/dev/null
+    if command -v egrep &>/dev/null; then 
+       #alias egrep='egrep --color=auto'
+       #echo "found $egbin"
+       alias egrep="$egbin --color=auto"
+    fi
+fi
+
+# Better bash completion. Mostly for MacOs
+if [ -f /usr/local/etc/bash_completion.d/git-completion.bash ]; then
+   source /usr/local/etc/bash_completion.d/git-completion.bash
+fi
+if [ -f /usr/local/etc/bash_completion ]; then
+   source /usr/local/etc/bash_completion
 fi
 
 # batcat is good at highlighting code, yaml, markdown, etc. And has a
@@ -125,6 +131,8 @@ if command -v batcat &>/dev/null; then
    alias b='batcat --plain'
 fi
 
+# Bubblewrap (https://github.com/containers/bubblewrap) an agent
+# for reduced priveleges.
 if command -v bwrap &>/dev/null; then
    bwrap_agent() {
     local CWD=$(pwd)
@@ -195,13 +203,15 @@ addpath "$gpath"
 addpath "$HOME/.npm-global/bin"
 addpath "$HOME/.cargo/bin"
 addpath "$HOME/.local/bin"
+addpath "$HOME/bin"
+addpath "$HOME/scripts"       # These are scripts from github
 
 # some more ls aliases
 alias l='ls -CF'
-alias ll='ls -alFh --time-style="+%Y-%m-%d %H:%M:%S"'
+alias ll='ls -alFh'
 alias la='ls -A'
-alias lt='ls -lrth --time-style="+%Y-%m-%d %H:%M:%S"'
-alias ltd='ls -lrthd --time-style="+%Y-%m-%d %H:%M:%S"'
+alias lt='ls -lrth'
+alias ltd='ls -lrthd'
 # List by groups:
 #  - group directories first
 #  - LOC_COLLATE=C forces case to be important, which groups .xxxx and _xxxx
@@ -214,8 +224,19 @@ alias hpage="history|tail -n 60"
 alias agrep="alias|grep"
 alias ha="history -a"
 alias resh='source ~/.bashrc'
+alias vdsh="gvim ~/.bashrc"
+
 if command -v vim &>/dev/null; then 
    export EDITOR=vim
+fi
+
+if command -v dmesg &>/dev/null; then 
+   alias dmesgt='dmesg -e --color=always| tail'
+fi
+
+if command -v systemctl &>/dev/null; then 
+   alias sc='systemctl'
+   alias ssc='sudo systemctl'
 fi
 
 if command -v git &>/dev/null; then 
@@ -250,15 +271,65 @@ if command -v mosquitto_sub &>/dev/null; then
    alias mqtt_dev="mosquitto_sub -h testpi -t 'MP1010/devices/#' -W 1"
 fi
 
+if command -v docker &>/dev/null; then
+   alias dkps='docker ps'
+   alias dkls='docker container ls'
+   alias dkc='docker container'
+   alias dk='docker'
+   #-----------------------------------------------------
+   function dksh()
+   # search the list of docker containers for a string in $1,
+   # and then start a bash shell in the first container that 
+   # matches
+   #-----------------------------------------------------
+   {
+      #docker exec -it $(sudo docker ps|grep $1|awk '{print $NF}') /bin/bash
+      docker exec -it -u ${USER} $(sudo docker ps|grep $1|head -n 1|awk '{print $NF}') /bin/bash -l
+   }
+   alias dkv="docker volume"
+   alias dkr="docker run"
+   alias dkcp="docker cp"
+   alias dkh="docker history"      
+   alias dkimg="docker images" 
+   alias dksv="docker save"
+   function dodef()
+   {
+      echo "$1" > ~/.dodef
+   }
+   function dosh()
+   {
+      eval "docker run -v mydata -v $HOME:$HOME-it $(cat ~/.dodef)"
+   }
+fi
+
+# List all functions, sorting function names that begin with '_' first.
+alias lsfunc='declare -F|sort -t_ -k1,1'
+
+if command -v openssl &>/dev/null; then 
+   alias md5='openssl dgst'
+fi
+
+if command -v mtr &>/dev/null; then 
+   alias mtr='mtr -o LSD'
+fi
+
 # Add an "alert" alias for long running commands.  Use like so:
 #   sleep 10; alert
+# This will cause a little popup notification
 alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+
+if command -v gnome-terminal &>/dev/null; then 
+   alias gt="gnome-terminal"
+fi
+
+if command -v inkscape &>/dev/null; then 
+   alias ink="inkscape"
+fi
 
 # Alias definitions.
 # You may want to put all your additions into a separate file like
 # ~/.bash_aliases, instead of adding them here directly.
 # See /usr/share/doc/bash-doc/examples in the bash-doc package.
-
 if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
@@ -266,13 +337,20 @@ fi
 # enable programmable completion features (you don't need to enable
 # this, if it's already enabled in /etc/bash.bashrc and /etc/profile
 # sources /etc/bash.bashrc).
-if ! shopt -oq posix; then
+if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
   if [ -f /usr/share/bash-completion/bash_completion ]; then
     . /usr/share/bash-completion/bash_completion
   elif [ -f /etc/bash_completion ]; then
     . /etc/bash_completion
   fi
 fi
+# Allow tab completion to ignore case
+bind "set completion-ignore-case on"
+
+#mvim_bin="/usr/local/bin/mvim"
+mvim_bin="/Applications/MacVim.app/Contents/bin/mvim"
+[[ -s $mvim_bin ]] && alias gvim="$mvim_bin"
+#[[ -s $mvim_bin ]] && export SVN_EDITOR="$mvim_bin"
 
 # Support for TitanPlayer
 #export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/russ/Documents/projects/titan/bin/
@@ -497,8 +575,6 @@ alias va=". .venv/bin/activate"
 alias hdfview="flatpak run org.hdfgroup.HDFView"
 
 export PICO_SDK_PATH=/home/russ/Documents/projects/pico-sdk/
-alias xcfile="xsel --clipboard --output > "
-alias xccb="cat your_file.txt | xclip -selection clipboard"
 
 DOCKER_COMPOSE_FILE="/home/dockeruser/docker/powerwall-proxy/docker-compose.yml"
 if [ -f "$DOCKER_COMPOSE_FILE" ]; then
