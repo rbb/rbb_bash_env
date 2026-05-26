@@ -608,3 +608,24 @@ MY_PASSTHROUGH_ADDITIONS=(
     ARTIFACTORY_WEBUI_TOK
 )
 export BB_ENV_PASSTHROUGH_ADDITIONS="${BB_ENV_PASSTHROUGH_ADDITIONS} ${MY_PASSTHROUGH_ADDITIONS[@]}"
+
+# bun
+if [ -d  "$HOME/.bun" ]; then
+   export BUN_INSTALL="$HOME/.bun"
+   addpath "$BUN_INSTALL/bin"
+fi
+# export NODE_LLAMA_CPP_GPU=false  # managed per-project via .envrc
+eval "$(direnv hook bash)"
+addpath /usr/local/cuda-12.6/bin
+
+######################################################
+function init_agents_md()
+# Function: init_claude (Clipboard to File)
+# Usage: init_claude
+# Action: Creates a symbolic link to a CLAUDE.md and AGENTS.md, into the current directory.
+######################################################
+{
+   ln -s "$HOME/Documents/cursor-config/CLAUDE.md" CLAUDE.md
+   ln -s "$HOME/Documents/cursor-config/AGENTS.md" AGENTS.md
+}
+export GOOGLE_CLOUD_PROJECT="rclone-gdrive-5280"
